@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Witness: on-chain evidence notary</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #16181d; --muted: #5d6573; --line: #e1e4ea;
+    --accent: #2f5bea; --ok: #1a7f4b; --warn: #a15c00; --bad: #b3261e;
+    --ok-bg: #e5f5ec; --warn-bg: #fdf0dc; --bad-bg: #fbe7e5; --info-bg: #e8eefc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #181b21; --text: #eceef2; --muted: #9aa3b2; --line: #2a2f39;
+      --accent: #7d9bff; --ok: #5fd39b; --warn: #f0b25a; --bad: #ff8a80;
+      --ok-bg: #12301f; --warn-bg: #3a2a10; --bad-bg: #3a1815; --info-bg: #1b2745;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+  .tag { color: var(--muted); margin: 4px 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  h2 { margin: 0 0 12px; font-size: 17px; }
+  label { display: block; font-weight: 600; margin: 12px 0 4px; font-size: 13px; }
+  input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text); font: inherit; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { padding: 10px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff;
+    font: inherit; font-weight: 600; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+  .row > * { flex: 1 1 160px; }
+  .row > button { flex: 0 0 auto; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .b-ok { background: var(--ok-bg); color: var(--ok); }
+  .b-warn { background: var(--warn-bg); color: var(--warn); }
+  .b-bad { background: var(--bad-bg); color: var(--bad); }
+  .b-info { background: var(--info-bg); color: var(--accent); }
+  .steps { list-style: none; margin: 12px 0 0; padding: 0; }
+  .steps li { padding: 6px 0 6px 26px; position: relative; color: var(--muted); }
+  .steps li::before { content: "○"; position: absolute; left: 4px; }
+  .steps li.active { color: var(--text); } .steps li.active::before { content: "◐"; color: var(--accent); }
+  .steps li.done { color: var(--text); } .steps li.done::before { content: "●"; color: var(--ok); }
+  .steps li.fail { color: var(--bad); } .steps li.fail::before { content: "✕"; }
+  dl { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; margin: 12px 0 0; }
+  dt { color: var(--muted); } dd { margin: 0; word-break: break-word; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+  .list-item { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 10px 0;
+    border-top: 1px solid var(--line); cursor: pointer; }
+  .list-item:first-child { border-top: 0; }
+  .list-item:hover .title { text-decoration: underline; }
+  .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .notice { padding: 10px 12px; border-radius: 8px; margin-top: 12px; }
+  .hidden { display: none; }
+  a { color: var(--accent); }
+  footer { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Witness</h1>
+    <div class="row" style="flex:0 1 330px">
+      <div>
+        <label for="network" style="margin-top:0">Network</label>
+        <select id="network">
+          <option value="studionet">GenLayer Studio</option>
+          <option value="bradbury">Bradbury testnet</option>
+        </select>
+      </div>
+    </div>
+  </header>
+  <p class="tag">An on-chain evidence notary. GenLayer validators read a web page, agree on what it says, and store that agreed reading so anyone can check later whether the page changed.</p>
+
+  <div class="card">
+    <h2>Contract</h2>
+    <label for="address" style="margin-top:0">Witness contract address on this network</label>
+    <input id="address" class="mono" placeholder="0x..." autocomplete="off" spellcheck="false">
+    <div id="netnote" class="muted" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Notarize a page</h2>
+    <label for="url">Public page URL (https only)</label>
+    <input id="url" placeholder="https://example.com/page" autocomplete="off" spellcheck="false">
+    <label for="claim">Claim about the page (up to 280 characters)</label>
+    <input id="claim" placeholder="The page says that ..." maxlength="280" autocomplete="off">
+    <div style="margin-top:14px"><button id="submit">Notarize</button></div>
+    <ul id="steps" class="steps hidden"></ul>
+    <div id="submitMsg" class="notice hidden"></div>
+  </div>
+
+  <div class="card">
+    <h2>Look up a record</h2>
+    <div class="row">
+      <div><label for="recordId" style="margin-top:0">Record id</label>
+        <input id="recordId" type="number" min="0" step="1" placeholder="0"></div>
+      <button id="lookup" class="secondary">Load</button>
+    </div>
+    <div id="record" class="hidden"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <h2 style="margin:0">Recent records</h2>
+      <button id="refresh" class="secondary" style="margin-left:auto">Refresh</button>
+    </div>
+    <div id="list" style="margin-top:8px"><span class="muted">Enter a contract address to load records.</span></div>
+  </div>
+
+  <footer>
+    <p><strong>What Witness records:</strong> the validators' agreed reading of a page (does it support the claim, what kind of page it is, whether it tried to inject instructions). It does not store raw page content. Pages that change between validators' fetches can cause disagreement or a "changed" result without a real change.</p>
+    <p>On Studio this app uses a throwaway in-browser account that holds no funds. On Bradbury it uses your browser wallet and you approve each transaction.</p>
+  </footer>
+</div>
+
+<script type="module">
+// ---------------------------------------------------------------- config
+// Fill in your deployed contract addresses here, or paste one into the page.
+// A link like ?network=bradbury&address=0x... also works.
+const CONFIG = {
+  addresses: { studionet: "0xd35cfD7E2b3d94B86b76d1908bB9A4Cd4e0423a8", bradbury: "" },
+  chainKeys: { studionet: "studionet", bradbury: "testnetBradbury" },
+  defaultNetwork: "studionet",
+};
+
+// ---------------------------------------------------------------- helpers
+const $ = (id) => document.getElementById(id);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function el(tag, props = {}, kids = []) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n[k] = v;
+  }
+  for (const c of [].concat(kids)) n.append(c);
+  return n;
+}
+
+// genlayer-js may return Map / bigint; make everything plain JSON-like.
+function norm(v) {
+  if (v instanceof Map) { const o = {}; for (const [k, x] of v) o[String(k)] = norm(x); return o; }
+  if (Array.isArray(v)) return v.map(norm);
+  if (typeof v === "bigint") return Number(v);
+  if (v && typeof v === "object") { const o = {}; for (const k of Object.keys(v)) o[k] = norm(v[k]); return o; }
+  return v;
+}
+
+function isHttps(u) { return typeof u === "string" && u.startsWith("https://") && !/\s/.test(u); }
+
+function describeReading(r) {
+  const [claim, kind, inj] = String(r || "").split("|");
+  if (!claim || !kind) return "No usable reading.";
+  const kindText = { article: "an article", docs: "a documentation page", price_page: "a price page", other: "another kind of page" }[kind] || kind;
+  const claimText = { yes: "supports the claim", no: "contradicts the claim", unclear: "does not clearly settle the claim" }[claim] || claim;
+  const injText = inj === "true" ? " The page appears to try to steer the reader, so the result is forced to unclear." : "";
+  return "Validators agreed the page is " + kindText + " and " + claimText + "." + injText;
+}
+
+function statusBadge(s) {
+  const map = { notarized: ["b-info", "notarized"], unchanged: ["b-ok", "unchanged"], changed: ["b-warn", "changed"], unreadable: ["b-bad", "unreadable"] };
+  const [cls, label] = map[s] || ["b-info", s || "unknown"];
+  return el("span", { class: "badge " + cls, text: label });
+}
+
+// ---------------------------------------------------------------- state
+let sdk = null, chains = null, types = null;
+let net = CONFIG.defaultNetwork;
+let studioAccount = null;
+let busy = false;
+
+async function loadSdk() {
+  if (sdk) return;
+  try {
+    sdk = await import("https://esm.sh/genlayer-js");
+    chains = await import("https://esm.sh/genlayer-js/chains");
+    try { types = await import("https://esm.sh/genlayer-js/types"); } catch (e) { types = null; }
+  } catch (e) {
+    throw new Error("Could not load the GenLayer SDK from the CDN. Check your connection and reload. (" + (e.message || e) + ")");
+  }
+}
+
+function chainObj() {
+  const c = chains[CONFIG.chainKeys[net]];
+  if (!c) throw new Error("This SDK build does not include the chain for " + net + ".");
+  return c;
+}
+
+function address() { return $("address").value.trim(); }
+function requireAddress() {
+  const a = address();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(a)) throw new Error("Enter the full contract address (0x followed by 40 characters) for this network.");
+  return a;
+}
+
+async function readClient() { await loadSdk(); return sdk.createClient({ chain: chainObj() }); }
+
+async function writeClient() {
+  await loadSdk();
+  if (net === "studionet") {
+    if (!studioAccount) studioAccount = sdk.createAccount();
+    return sdk.createClient({ chain: chainObj(), account: studioAccount });
+  }
+  if (!window.ethereum) throw new Error("No browser wallet found. Install a wallet such as MetaMask to use Bradbury.");
+  const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+  const client = sdk.createClient({ chain: chainObj(), account: accounts[0] });
+  try { if (client.connect) await client.connect(CONFIG.chainKeys[net]); } catch (e) { console.warn("connect():", e); }
+  return client;
+}
+
+async function read(functionName, args = []) {
+  const client = await readClient();
+  const out = await client.readContract({ address: requireAddress(), functionName, args });
+  return norm(out);
+}
+
+async function write(functionName, args, onStage) {
+  const client = await writeClient();
+  onStage && onStage("signing");
+  const hash = await client.writeContract({ address: requireAddress(), functionName, args, value: 0n });
+  onStage && onStage("submitted", hash);
+  const accepted = (types && types.TransactionStatus && types.TransactionStatus.ACCEPTED) || "ACCEPTED";
+  const receipt = await client.waitForTransactionReceipt({ hash, status: accepted, retries: 200, interval: 3000 });
+  onStage && onStage("accepted", hash);
+  return { hash, receipt };
+}
+
+// ---------------------------------------------------------------- progress UI
+const STEP_LABELS = [
+  ["sign", "Approve and send the transaction"],
+  ["submit", "Transaction submitted to the network"],
+  ["validate", "Validators fetch the page and agree on a reading"],
+  ["done", "Result recorded"],
+];
+function showSteps() {
+  const ul = $("steps"); ul.replaceChildren(); ul.classList.remove("hidden");
+  for (const [key, label] of STEP_LABELS) ul.append(el("li", { text: label, id: "step-" + key }));
+}
+function setStep(key, state) {
+  const li = $("step-" + key); if (!li) return;
+  li.className = state;
+}
+function message(text, kind) {
+  const m = $("submitMsg");
+  m.className = "notice " + ({ ok: "b-ok", bad: "b-bad", warn: "b-warn", info: "b-info" }[kind] || "b-info");
+  m.textContent = text;
+}
+function friendly(e) {
+  const t = String((e && (e.shortMessage || e.message)) || e);
+  if (/user rejected|denied/i.test(t)) return "You rejected the request in your wallet.";
+  return t.length > 400 ? t.slice(0, 400) + "..." : t;
+}
+
+// ---------------------------------------------------------------- actions
+async function notarize() {
+  if (busy) return;
+  const url = $("url").value.trim(), claim = $("claim").value.trim();
+  $("submitMsg").className = "hidden";
+  if (!isHttps(url)) return message("The URL must start with https:// and contain no spaces.", "bad");
+  if (!claim || claim.length > 280) return message("The claim must be between 1 and 280 characters.", "bad");
+
+  busy = true; $("submit").disabled = true; showSteps();
+  try {
+    requireAddress();
+    const before = Number(await read("count"));
+    setStep("sign", "active");
+    await write("notarize", [url, claim], (stage) => {
+      if (stage === "submitted") { setStep("sign", "done"); setStep("submit", "done"); setStep("validate", "active"); }
+      if (stage === "accepted") { setStep("validate", "done"); }
+    });
+    const after = Number(await read("count"));
+    if (after > before) {
+      setStep("done", "done");
+      const id = after - 1;
+      message("Notarized as record " + id + ".", "ok");
+      $("recordId").value = id;
+      await loadRecord(id); await loadList();
+    } else {
+      setStep("done", "fail");
+      message("The transaction finished but no record was created. The page may have been unreadable, the input rejected, or validators may not have agreed. Try again or use a simpler public page.", "warn");
+    }
+  } catch (e) {
+    for (const [k] of STEP_LABELS) { const li = $("step-" + k); if (li && li.className === "active") li.className = "fail"; }
+    message(friendly(e), "bad");
+  } finally { busy = false; $("submit").disabled = false; }
+}
+
+function renderRecord(r) {
+  const box = $("record"); box.className = ""; box.replaceChildren();
+  const dl = el("dl");
+  const add = (k, v) => { dl.append(el("dt", { text: k })); dl.append(el("dd", {}, v)); };
+  add("Record", String(r.id));
+  add("Status", statusBadge(r.status));
+  add("Page", isHttps(r.url) ? el("a", { href: r.url, text: r.url, target: "_blank", rel: "noopener noreferrer" }) : String(r.url));
+  add("Claim", String(r.claim));
+  add("Agreed reading", el("span", { class: "mono", text: String(r.last_reading) }));
+  add("In plain words", describeReading(r.last_reading));
+  add("Reading hash", el("span", { class: "mono", text: String(r.reading_hash || "(not available)") }));
+  add("Checks", String(r.check_count));
+  add("Submitted by", el("span", { class: "mono", text: String(r.owner) }));
+  box.append(dl);
+  const btn = el("button", { text: "Re-check this page", class: "secondary" });
+  btn.style.marginTop = "14px";
+  btn.onclick = () => recheck(r.id, btn);
+  box.append(btn);
+  const out = el("div", { id: "recheckMsg", class: "notice hidden" }); box.append(out);
+}
+
+async function loadRecord(id) {
+  const box = $("record");
+  try {
+    const r = await read("get_record", [BigInt(id)]);
+    renderRecord(r);
+  } catch (e) {
+    box.className = "notice b-bad"; box.textContent = "Could not load record " + id + ": " + friendly(e);
+  }
+}
+
+async function recheck(id, btn) {
+  if (busy) return;
+  busy = true; btn.disabled = true;
+  const out = $("recheckMsg"); out.className = "notice b-info"; out.textContent = "Re-checking. Validators are reading the page again...";
+  try {
+    const before = await read("get_record", [BigInt(id)]);
+    await write("recheck", [BigInt(id)]);
+    const after = await read("get_record", [BigInt(id)]);
+    renderRecord(after);
+    const o = $("recheckMsg");
+    if (after.check_count > before.check_count) {
+      o.className = "notice " + (after.status === "unchanged" ? "b-ok" : "b-warn");
+      o.textContent = "Result: " + after.status + ". " + (after.status === "unchanged" ? "The page still produces the same agreed reading." : after.status === "changed" ? "The page now produces a different agreed reading." : "The page could not be read this time.");
+    } else {
+      o.className = "notice b-warn"; o.textContent = "The transaction finished but the check was not recorded (limit reached or validators did not agree).";
+    }
+  } catch (e) {
+    const o = $("recheckMsg"); if (o) { o.className = "notice b-bad"; o.textContent = friendly(e); }
+  } finally { busy = false; btn.disabled = false; }
+}
+
+async function loadList() {
+  const box = $("list");
+  try {
+    requireAddress();
+    box.replaceChildren(el("span", { class: "muted", text: "Loading..." }));
+    const n = Number(await read("count"));
+    if (n === 0) { box.replaceChildren(el("span", { class: "muted", text: "No records yet." })); return; }
+    const start = Math.max(0, n - 10);
+    const items = await read("list_records", [BigInt(start), BigInt(10)]);
+    box.replaceChildren();
+    for (const r of items.slice().reverse()) {
+      const row = el("div", { class: "list-item" }, [
+        el("span", { class: "title", text: "#" + r.id + "  " + r.url }),
+        statusBadge(r.status),
+      ]);
+      row.onclick = () => { $("recordId").value = r.id; renderRecord(r); };
+      box.append(row);
+    }
+  } catch (e) {
+    box.replaceChildren(el("span", { class: "muted", text: friendly(e) }));
+  }
+}
+
+// ---------------------------------------------------------------- init
+function applyNetwork() {
+  $("network").value = net;
+  const saved = localStorage.getItem("witness.address." + net);
+  $("address").value = CONFIG.addresses[net] || saved || "";
+  $("netnote").textContent = net === "studionet"
+    ? "Studio is a sandbox. Writes use a throwaway account created in this page."
+    : "Bradbury is a testnet. Writes use your browser wallet and need testnet GEN for gas.";
+}
+
+function init() {
+  const p = new URLSearchParams(location.search);
+  if (p.get("network") === "bradbury" || p.get("network") === "studionet") net = p.get("network");
+  applyNetwork();
+  if (p.get("address")) $("address").value = p.get("address");
+  $("network").onchange = () => { net = $("network").value; applyNetwork(); $("record").className = "hidden"; loadList(); };
+  $("address").onchange = () => { try { localStorage.setItem("witness.address." + net, address()); } catch (e) {} loadList(); };
+  $("submit").onclick = notarize;
+  $("lookup").onclick = () => { const v = $("recordId").value; if (v !== "") loadRecord(Number(v)); };
+  $("refresh").onclick = loadList;
+  if (/^0x[0-9a-fA-F]{40}$/.test(address())) loadList();
+}
+init();
+</script>
+</body>
+</html>

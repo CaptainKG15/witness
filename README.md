@@ -45,9 +45,13 @@ Limits: URL must be https and at most 300 characters. Claim is 1 to 280 characte
 - LLM readings can differ between models. The schema is small on purpose to reduce this, but it cannot remove it.
 - The injection check is a tripwire, not a guarantee.
 
+## The app
+`app/index.html` is a single-file web app that calls the contract through `genlayer-js`. It can notarize a page, show the transaction stages, look up a record, list recent records, and re-check a record. It works on GenLayer Studio (throwaway in-browser account) and Bradbury (browser wallet). Open it with a contract address in the page or via `?network=bradbury&address=0x...`. It renders on-chain text with `textContent` only, never as HTML.
+
 ## Tests
 - `tests/test_logic.py`: off-chain tests of the pure logic (schema parsing, injection tripwire, input validation, prompt shape). Run with `python3 tests/test_logic.py`. It uses a small local stand-in for the `genlayer` module.
-- `tests/hostile_pages/` and `STUDIO_TEST.md`: hostile and control pages with expected outcomes, run in GenLayer Studio against real validators. Results go in `tests/attacks/RESULTS.md`.
+- `tests/frontend_helpers.test.js`: tests the app's helper functions. Run with `node tests/frontend_helpers.test.js`.
+- `tests/hostile_pages/` and `STUDIO_TEST.md`: hostile and control pages with expected outcomes, run in GenLayer Studio against real validators. Results so far, including what has not been run, are in `tests/attacks/RESULTS.md`.
 
 ## Deployment
 - Network: (fill in: Studio or Bradbury)
