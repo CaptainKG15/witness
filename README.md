@@ -59,9 +59,10 @@ Studio (sandbox):
 - Explorer: https://explorer-studio.genlayer.com/contracts/0xd35cfD7E2b3d94B86b76d1908bB9A4Cd4e0423a8
 
 Bradbury (testnet):
-- Contract address: (fill in after deploying)
-- Deploy transaction: (fill in)
-- Explorer: https://explorer-bradbury.genlayer.com/address/(address)
+- Contract address: `0x5f5ac30810F8eDF36F489CD3694cd7616d3B090e`
+- Deploy transaction: `0x33a7bad658662f6dcca3d48ba6a56e3bf6d442da834931c1ff39db3304dca90e`
+- Explorer: https://explorer-bradbury.genlayer.com/address/0x5f5ac30810F8eDF36F489CD3694cd7616d3B090e
+- Deploy transaction on explorer: https://explorer-bradbury.genlayer.com/tx/0x33a7bad658662f6dcca3d48ba6a56e3bf6d442da834931c1ff39db3304dca90e
 
 Live app: https://captainkg15.github.io/witness/app/
 
