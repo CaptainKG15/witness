@@ -54,8 +54,15 @@ Limits: URL must be https and at most 300 characters. Claim is 1 to 280 characte
 - `tests/hostile_pages/` and `STUDIO_TEST.md`: hostile and control pages with expected outcomes, run in GenLayer Studio against real validators. Results so far, including what has not been run, are in `tests/attacks/RESULTS.md`.
 
 ## Deployment
-- Network: (fill in: Studio or Bradbury)
-- Contract address: (fill in)
+Studio (sandbox):
+- Contract address: `0xd35cfD7E2b3d94B86b76d1908bB9A4Cd4e0423a8`
+- Explorer: https://explorer-studio.genlayer.com/contracts/0xd35cfD7E2b3d94B86b76d1908bB9A4Cd4e0423a8
+
+Bradbury (testnet):
+- Contract address: (fill in after deploying)
 - Deploy transaction: (fill in)
-- Live app: (fill in)
-- Deployed-code check: (fill in how the on-chain code was compared to `contracts/witness.py`)
+- Explorer: https://explorer-bradbury.genlayer.com/address/(address)
+
+Live app: https://captainkg15.github.io/witness/app/
+
+`app/deploy.html` deploys `contracts/witness.py` to Bradbury from the browser with a wallet. It shows the SHA-256 of the source it deploys, so the deployed code can be compared with the file in this repo (for example with `genlayer code <address>` and hashing the output).
